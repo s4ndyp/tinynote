@@ -1,4 +1,4 @@
-const CACHE = "smartnote-v1";
+const CACHE = "tinynote-v1";
 const PRECACHE = [
   "/",
   "/index.html",

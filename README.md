@@ -1,4 +1,4 @@
-# Smartnote
+# Tinynote
 
 Smartphone-first notitie- en to-do-app als **PWA**. Donker glas-uiterlijk, opslag in [PocketBase](https://pocketbase.io) 0.40.1.
 
@@ -13,7 +13,7 @@ Het image komt van GitHub Container Registry (`ghcr.io/s4ndyp/tinynote`). Bij ee
 
 Open daarna [http://localhost:8080](http://localhost:8080).
 
-Data blijft bewaard in het Docker-volume `smartnote_data`.
+Data blijft bewaard in het Docker-volume `tinynote_data`.
 
 Stoppen:
 
