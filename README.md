@@ -5,8 +5,11 @@ Smartphone-first notitie- en to-do-app als **PWA**. Donker glas-uiterlijk, opsla
 ## Starten met Docker
 
 ```bash
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
+
+Het image komt van GitHub Container Registry (`ghcr.io/s4ndyp/tinynote`). Bij een privé-package eerst inloggen: `docker login ghcr.io`.
 
 Open daarna [http://localhost:8080](http://localhost:8080).
 

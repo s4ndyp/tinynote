@@ -1,6 +1,6 @@
 services:
   pocketbase:
-    build: .
+    image: ghcr.io/s4ndyp/tinynote:latest
     container_name: smartnote
     restart: unless-stopped
     ports:
