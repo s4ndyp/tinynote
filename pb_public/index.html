@@ -27,6 +27,8 @@
       --sage: #8fa894;
       --mist: rgba(240, 230, 212, 0.1);
       --line: rgba(240, 230, 212, 0.16);
+      --note-accent: rgba(120, 190, 235, 0.72);
+      --todo-accent: rgba(235, 150, 80, 0.78);
       --glass: linear-gradient(180deg, rgba(255, 244, 224, 0.14), rgba(255, 244, 224, 0.05));
       --font-ui: "Sora", "Avenir Next", sans-serif;
       --font-brand: "Fraunces", "Iowan Old Style", serif;
@@ -116,9 +118,29 @@
       display: flex;
       flex-direction: column;
       border-radius: var(--radius);
-      border: 1px solid var(--line);
+      border: 2px solid var(--line);
       background: rgba(255, 244, 224, 0.04);
       overflow: hidden;
+    }
+
+    .home-panel-notes {
+      border-color: var(--note-accent);
+      box-shadow: inset 0 1px 0 rgba(120, 190, 235, 0.12);
+    }
+
+    .home-panel-todos {
+      border-color: var(--todo-accent);
+      box-shadow: inset 0 1px 0 rgba(235, 150, 80, 0.12);
+    }
+
+    .panel-head {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.5rem 0.85rem 0.38rem;
+      border-bottom: 1px solid rgba(240, 230, 212, 0.08);
     }
 
     .panel-label {
@@ -128,8 +150,29 @@
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: rgba(240, 230, 212, 0.48);
-      padding: 0.55rem 0.85rem 0.35rem;
-      border-bottom: 1px solid rgba(240, 230, 212, 0.08);
+      padding: 0;
+      border-bottom: none;
+    }
+
+    .panel-mode-btn {
+      flex-shrink: 0;
+      border-radius: 999px;
+      padding: 0.32rem 0.65rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      border: 1px solid var(--todo-accent);
+      color: rgba(255, 210, 170, 0.92);
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .panel-mode-btn.is-done-view {
+      background: linear-gradient(180deg, rgba(235, 150, 80, 0.22), rgba(235, 150, 80, 0.08));
+    }
+
+    .panel-mode-btn:active {
+      transform: scale(0.96);
     }
 
     .home-panel .list {
@@ -224,15 +267,17 @@
       font-weight: 600;
       font-size: 0.92rem;
       text-align: left;
+      border-width: 2px;
+      border-style: solid;
       transition: transform 0.16s ease;
     }
 
     .fab-menu button.note-opt {
-      border-color: rgba(201, 163, 106, 0.38);
+      border-color: var(--note-accent);
     }
 
     .fab-menu button.todo-opt {
-      border-color: rgba(143, 168, 148, 0.38);
+      border-color: var(--todo-accent);
     }
 
     .fab-menu button:active {
@@ -240,10 +285,10 @@
     }
 
     .fab {
-      width: 3.55rem;
-      height: 3.55rem;
+      width: 4.15rem;
+      height: 4.15rem;
       border-radius: 50%;
-      font-size: 2rem;
+      font-size: 2.35rem;
       font-weight: 400;
       line-height: 1;
       display: grid;
@@ -943,11 +988,16 @@
       </header>
       <div class="home-split">
         <div class="home-panel home-panel-notes">
-          <h2 class="panel-label">Notities</h2>
+          <div class="panel-head">
+            <h2 class="panel-label">Notities</h2>
+          </div>
           <div id="home-notes-list" class="list list-compact"></div>
         </div>
         <div class="home-panel home-panel-todos">
-          <h2 class="panel-label">To-do’s</h2>
+          <div class="panel-head">
+            <h2 class="panel-label">To-do’s</h2>
+            <button type="button" id="home-todos-mode" class="panel-mode-btn glass" aria-pressed="false" title="Schakel tussen openstaand en afgerond">Afgerond</button>
+          </div>
           <div id="home-todos-list" class="list list-compact"></div>
         </div>
       </div>
@@ -1047,8 +1097,8 @@
 
   <div id="fab-wrap" class="fab-wrap hidden" aria-hidden="true">
     <div id="fab-menu" class="fab-menu hidden" role="menu" aria-label="Nieuw">
-      <button class="glass note-opt" type="button" role="menuitem" data-fab-go="note">Notitie</button>
-      <button class="glass todo-opt" type="button" role="menuitem" data-fab-go="todo">To-do</button>
+      <button class="glass note-opt" type="button" role="menuitem" data-fab-go="note">Nieuwe notitie</button>
+      <button class="glass todo-opt" type="button" role="menuitem" data-fab-go="todo">Nieuwe to-do</button>
     </div>
     <button id="fab" class="fab glass" type="button" aria-label="Nieuw toevoegen" aria-expanded="false" aria-haspopup="menu">+</button>
   </div>
@@ -1092,6 +1142,7 @@
     let notesKenmerkFilter = "";
     let todosKenmerkFilter = "";
     let showDoneTodos = true;
+    let homeTodosShowDone = false;
     let noteNewFiles = [];
     let noteRemoveFiles = [];
     let noteExistingFiles = [];
@@ -1420,23 +1471,38 @@
       `).join("");
     }
 
+    function syncHomeTodosModeButton() {
+      const btn = $("#home-todos-mode");
+      if (!btn) return;
+      btn.textContent = homeTodosShowDone ? "Openstaand" : "Afgerond";
+      btn.setAttribute("aria-pressed", homeTodosShowDone ? "true" : "false");
+      btn.classList.toggle("is-done-view", homeTodosShowDone);
+      btn.title = homeTodosShowDone
+        ? "Toon openstaande to-do’s"
+        : "Toon afgeronde to-do’s";
+    }
+
     function renderHomeTodosList() {
       const box = $("#home-todos-list");
       if (!box) return;
+      syncHomeTodosModeButton();
       if (!todosItems.length) {
         stopAgeTimer();
         box.innerHTML = '<p class="empty">Nog geen to-do’s.</p>';
         return;
       }
-      const sorted = sortTodos(todosItems.filter((item) => !item.done));
+      const filtered = todosItems.filter((item) => homeTodosShowDone ? item.done : !item.done);
+      const sorted = sortTodos(filtered);
       if (!sorted.length) {
         stopAgeTimer();
-        box.innerHTML = '<p class="empty">Geen openstaande to-do’s.</p>';
+        box.innerHTML = homeTodosShowDone
+          ? '<p class="empty">Geen afgeronde to-do’s.</p>'
+          : '<p class="empty">Geen openstaande to-do’s.</p>';
         return;
       }
       box.innerHTML = sorted.map((item) => `
         <div class="todo-row${item.done ? " is-done" : ""}${item.pinned ? " is-pinned" : ""}">
-          <button class="check${item.done ? " is-on" : ""}" type="button" data-todo-check="${esc(item.id)}" data-done="${item.done ? "1" : "0"}" aria-label="Afvinken"></button>
+          <button class="check${item.done ? " is-on" : ""}" type="button" data-todo-check="${esc(item.id)}" data-done="${item.done ? "1" : "0"}" aria-label="${item.done ? "Terug naar to-do" : "Afvinken"}"></button>
           <button class="todo-main" type="button" data-open-todo="${esc(item.id)}">
             <span class="row-title">${esc(item.title)}</span>
             <span class="row-meta">${esc(PERIODS[item.periode] || item.periode)}${item.kenmerk ? " · " + esc(item.kenmerk) : ""}</span>
@@ -1882,6 +1948,11 @@
       todoNewFiles.push(...[...event.target.files]);
       event.target.value = "";
       renderFormFiles("todo");
+    });
+
+    $("#home-todos-mode").addEventListener("click", () => {
+      homeTodosShowDone = !homeTodosShowDone;
+      renderHomeTodosList();
     });
 
     $("#fab").addEventListener("click", (event) => {
