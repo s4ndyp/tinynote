@@ -1254,6 +1254,7 @@
     let todoExistingFiles = [];
     let filesModalContext = null;
     let fabOpen = false;
+    let noteEditorSavedCaret = { offset: 0, lineIndex: 0 };
     const NO_KENMERK = "__none__";
 
     function closeFabMenu() {
@@ -1778,12 +1779,34 @@
 
     function getActiveLineIndex(editor) {
       const sel = window.getSelection();
-      if (!sel.rangeCount || !editor.contains(sel.anchorNode)) return 0;
+      if (!sel.rangeCount || !editor.contains(sel.anchorNode)) {
+        return noteEditorSavedCaret.lineIndex;
+      }
+      let node = sel.anchorNode;
+      if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+      while (node && node !== editor) {
+        if (node.parentElement === editor && (node.tagName === "DIV" || node.tagName === "P")) {
+          const blocks = [...editor.children].filter((el) => el.tagName === "DIV" || el.tagName === "P");
+          const idx = blocks.indexOf(node);
+          if (idx >= 0) return idx;
+        }
+        node = node.parentElement;
+      }
       const range = sel.getRangeAt(0);
       const pre = range.cloneRange();
       pre.selectNodeContents(editor);
       pre.setEnd(range.startContainer, range.startOffset);
       return (pre.toString().match(/\n/g) || []).length;
+    }
+
+    function saveNoteEditorCaret() {
+      const editor = noteEditorEl();
+      const sel = window.getSelection();
+      if (!sel.rangeCount || !editor.contains(sel.anchorNode)) return;
+      noteEditorSavedCaret = {
+        offset: getCaretTextOffset(editor),
+        lineIndex: getActiveLineIndex(editor)
+      };
     }
 
     function getCaretTextOffset(editor) {
@@ -1847,37 +1870,40 @@
       return { lines, colors };
     }
 
-    function syncNoteEditorStructure() {
+    function syncNoteEditorStructure(caretOffset) {
       const editor = noteEditorEl();
-      const caret = getCaretTextOffset(editor);
+      const caret = caretOffset ?? noteEditorSavedCaret.offset;
       const { lines, colors } = readNoteEditorLines();
       renderNoteLines(lines, colors);
       setCaretTextOffset(editor, caret);
+      noteEditorSavedCaret.offset = caret;
       return { lines, colors };
     }
 
     function applyLineColor(color) {
       const editor = noteEditorEl();
-      editor.focus();
-      const index = getActiveLineIndex(editor);
-      const caret = getCaretTextOffset(editor);
+      const { offset, lineIndex } = noteEditorSavedCaret;
+      syncNoteEditorStructure(offset);
       const { lines, colors } = readNoteEditorLines();
-      colors[index] = colors[index] === color ? null : color;
+      colors[lineIndex] = colors[lineIndex] === color ? null : color;
       renderNoteLines(lines, colors);
-      setCaretTextOffset(editor, caret);
+      setCaretTextOffset(editor, offset);
+      editor.focus();
+      noteEditorSavedCaret = { offset, lineIndex };
     }
 
     function applyList(kind) {
       if (kind !== "dot") return;
       const editor = noteEditorEl();
-      editor.focus();
-      const index = getActiveLineIndex(editor);
-      const caret = getCaretTextOffset(editor);
+      const { offset, lineIndex } = noteEditorSavedCaret;
+      syncNoteEditorStructure(offset);
       const { lines, colors } = readNoteEditorLines();
-      const stripped = (lines[index] || "").replace(/^\s*(?:[•\-*]|\d+\.)\s+/, "");
-      lines[index] = "• " + stripped;
+      const stripped = (lines[lineIndex] || "").replace(/^\s*(?:[•\-*]|\d+\.)\s+/, "");
+      lines[lineIndex] = "• " + stripped;
       renderNoteLines(lines, colors);
-      setCaretTextOffset(editor, caret);
+      setCaretTextOffset(editor, offset);
+      editor.focus();
+      noteEditorSavedCaret = { offset, lineIndex };
     }
 
     function resetNoteForm() {
@@ -1887,6 +1913,7 @@
       noteExistingFiles = [];
       $("#note-form").reset();
       noteEditorEl().innerHTML = "";
+      noteEditorSavedCaret = { offset: 0, lineIndex: 0 };
       $("#note-bijlagen-list").innerHTML = "";
       $("#note-heading").textContent = "Nieuwe notitie";
       $("#note-delete").classList.add("hidden");
@@ -2211,6 +2238,20 @@
 
     noteEditorEl().addEventListener("pointerdown", (event) => {
       event.stopPropagation();
+    });
+
+    const noteEditor = noteEditorEl();
+    ["keyup", "keydown", "mouseup", "touchend", "input", "click"].forEach((eventName) => {
+      noteEditor.addEventListener(eventName, saveNoteEditorCaret);
+    });
+    document.addEventListener("selectionchange", () => {
+      const editor = noteEditorEl();
+      if (!editor.isConnected) return;
+      saveNoteEditorCaret();
+    });
+
+    $(".note-editor-tools").addEventListener("pointerdown", (event) => {
+      event.preventDefault();
     });
 
     window.addEventListener("hashchange", render);
