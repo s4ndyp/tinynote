@@ -1881,6 +1881,7 @@
     }
 
     function applyLineColor(color) {
+      saveNoteEditorCaret();
       const editor = noteEditorEl();
       const { offset, lineIndex } = noteEditorSavedCaret;
       syncNoteEditorStructure(offset);
@@ -1894,6 +1895,7 @@
 
     function applyList(kind) {
       if (kind !== "dot") return;
+      saveNoteEditorCaret();
       const editor = noteEditorEl();
       const { offset, lineIndex } = noteEditorSavedCaret;
       syncNoteEditorStructure(offset);
