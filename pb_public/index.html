@@ -1830,19 +1830,6 @@
       }).join("");
     }
 
-    function focusNoteLine(index) {
-      const editor = noteEditorEl();
-      const line = editor.children[index];
-      if (!line) return;
-      editor.focus();
-      const sel = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(line);
-      range.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-
     function readNoteEditorLines() {
       const editor = noteEditorEl();
       const text = editor.innerText.replace(/\r\n/g, "\n");
