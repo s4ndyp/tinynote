@@ -491,29 +491,83 @@
       min-height: 0;
     }
 
-    .textarea-frame textarea {
-      padding-right: 3.1rem;
-    }
-
-    .list-dot-btn {
+    .note-editor-tools {
       position: absolute;
       top: 0.55rem;
       right: 0.55rem;
       z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .note-editor-tools button {
       width: 2.35rem;
       height: 2.35rem;
       padding: 0;
       border-radius: 0.6rem;
-      font-size: 1.15rem;
-      font-weight: 600;
       line-height: 1;
       display: grid;
       place-items: center;
+      transition: transform 0.16s ease;
+    }
+
+    .note-editor-tools button:active {
+      transform: scale(0.94);
+    }
+
+    .list-dot-btn {
+      font-size: 1.15rem;
+      font-weight: 600;
       border: 1px solid var(--note-accent);
     }
 
-    .list-dot-btn:active {
-      transform: scale(0.94);
+    .line-color-btn.is-red {
+      border: 1px solid rgba(224, 120, 100, 0.85);
+      background: linear-gradient(180deg, rgba(224, 120, 100, 0.55), rgba(160, 70, 55, 0.35));
+      box-shadow: inset 0 0 0 1px rgba(255, 180, 165, 0.25);
+    }
+
+    .line-color-btn.is-green {
+      border: 1px solid rgba(120, 200, 140, 0.85);
+      background: linear-gradient(180deg, rgba(120, 200, 140, 0.55), rgba(70, 130, 85, 0.35));
+      box-shadow: inset 0 0 0 1px rgba(180, 235, 195, 0.25);
+    }
+
+    .note-editor {
+      flex: 1;
+      min-height: 14rem;
+      overflow-y: auto;
+      padding: 0.85rem 3.25rem 0.85rem 0.95rem;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.55;
+      color: var(--paper);
+      background: rgba(255, 244, 224, 0.05);
+      border: 1px solid var(--line);
+      border-radius: 0.85rem;
+      outline: none;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .note-editor:focus {
+      border-color: rgba(201, 163, 106, 0.7);
+    }
+
+    .note-editor:empty::before {
+      content: attr(data-placeholder);
+      color: rgba(240, 230, 212, 0.38);
+      pointer-events: none;
+    }
+
+    .note-editor .line-red {
+      color: #e89282;
+    }
+
+    .note-editor .line-green {
+      color: #8fd4a8;
     }
 
     #note-form .field-omschrijving {
@@ -525,11 +579,6 @@
       flex: 1;
     }
 
-    #note-form .field-omschrijving textarea {
-      flex: 1;
-      min-height: 14rem;
-      resize: vertical;
-    }
 
     .period {
       border: 0;
@@ -1064,8 +1113,12 @@
         </label>
         <label class="field field-omschrijving">Omschrijving
           <div class="textarea-frame">
-            <button class="glass list-dot-btn" type="button" data-list="dot" aria-label="Puntenlijst">•</button>
-            <textarea id="note-body" name="beschrijving" maxlength="20000" placeholder="Schrijf hier…"></textarea>
+            <div class="note-editor-tools">
+              <button class="glass list-dot-btn" type="button" data-list="dot" aria-label="Puntenlijst">•</button>
+              <button class="glass line-color-btn is-red" type="button" data-line-color="red" aria-label="Regel rood"></button>
+              <button class="glass line-color-btn is-green" type="button" data-line-color="green" aria-label="Regel groen"></button>
+            </div>
+            <div id="note-body" class="note-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Schrijf hier…"></div>
           </div>
         </label>
         <label class="field file-picker">Bijlagen
@@ -1575,7 +1628,7 @@
           <button class="note-main" type="button" data-open-note="${esc(item.id)}">
             <span class="row-title">${esc(item.title)}</span>
             <span class="row-meta">${item.kenmerk ? esc(item.kenmerk) : "zonder kenmerk"} · ${esc(fmtDate(item.created))}</span>
-            <span class="row-body">${esc(item.beschrijving || "")}</span>
+            <span class="row-body">${esc(notePlainPreview(item.beschrijving || ""))}</span>
           </button>
           ${attachBtn("notes", item)}
           ${pinButton("note", item)}
@@ -1662,23 +1715,131 @@
       if (!onHome) closeFabMenu();
     }
 
+    function noteEditorEl() {
+      return $("#note-body");
+    }
+
+    function sanitizeNoteHtml(html) {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const allowed = new Set(["DIV", "BR", "SPAN", "P"]);
+      function walk(node) {
+        [...node.childNodes].forEach((child) => {
+          if (child.nodeType !== Node.ELEMENT_NODE) return;
+          if (!allowed.has(child.tagName)) {
+            const frag = document.createDocumentFragment();
+            while (child.firstChild) frag.appendChild(child.firstChild);
+            child.replaceWith(frag);
+            walk(node);
+            return;
+          }
+          const keepClass = child.classList.contains("line-red") ? "line-red"
+            : child.classList.contains("line-green") ? "line-green" : "";
+          [...child.attributes].forEach((attr) => child.removeAttribute(attr.name));
+          if (keepClass) child.classList.add(keepClass);
+          walk(child);
+        });
+      }
+      walk(doc.body);
+      return doc.body.innerHTML;
+    }
+
+    function notePlainPreview(value) {
+      if (!value) return "";
+      if (!value.includes("<")) return value;
+      const div = document.createElement("div");
+      div.innerHTML = sanitizeNoteHtml(value);
+      return div.innerText.replace(/\r\n/g, "\n");
+    }
+
+    function setNoteEditorContent(raw) {
+      const editor = noteEditorEl();
+      if (!raw) {
+        editor.innerHTML = "";
+        return;
+      }
+      if (raw.includes("<") && /<[a-z][\s\S]*>/i.test(raw)) {
+        editor.innerHTML = sanitizeNoteHtml(raw);
+        return;
+      }
+      editor.innerHTML = raw.split("\n").map((line) => `<div>${esc(line)}</div>`).join("");
+    }
+
+    function getNoteEditorHtml() {
+      syncNoteEditorStructure();
+      return sanitizeNoteHtml(noteEditorEl().innerHTML);
+    }
+
+    function getActiveLineIndex(editor) {
+      const sel = window.getSelection();
+      if (!sel.rangeCount || !editor.contains(sel.anchorNode)) return 0;
+      const range = sel.getRangeAt(0);
+      const pre = range.cloneRange();
+      pre.selectNodeContents(editor);
+      pre.setEnd(range.startContainer, range.startOffset);
+      return (pre.toString().match(/\n/g) || []).length;
+    }
+
+    function renderNoteLines(lines, colors) {
+      const editor = noteEditorEl();
+      editor.innerHTML = lines.map((line, index) => {
+        const color = colors[index];
+        const cls = color === "red" ? "line-red" : color === "green" ? "line-green" : "";
+        const classAttr = cls ? ` class="${cls}"` : "";
+        return `<div${classAttr}>${esc(line) || "<br>"}</div>`;
+      }).join("");
+    }
+
+    function focusNoteLine(index) {
+      const editor = noteEditorEl();
+      const line = editor.children[index];
+      if (!line) return;
+      editor.focus();
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(line);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    function syncNoteEditorStructure() {
+      const editor = noteEditorEl();
+      const text = editor.innerText.replace(/\r\n/g, "\n");
+      const lines = text.length ? text.split("\n") : [""];
+      const colors = [];
+      [...editor.children].forEach((child) => {
+        if (child.tagName !== "DIV" && child.tagName !== "P") return;
+        colors.push(
+          child.classList.contains("line-red") ? "red"
+            : child.classList.contains("line-green") ? "green" : null
+        );
+      });
+      while (colors.length < lines.length) colors.push(null);
+      colors.length = lines.length;
+      renderNoteLines(lines, colors);
+      return { lines, colors };
+    }
+
+    function applyLineColor(color) {
+      const editor = noteEditorEl();
+      editor.focus();
+      const index = getActiveLineIndex(editor);
+      const { lines, colors } = syncNoteEditorStructure();
+      colors[index] = color;
+      renderNoteLines(lines, colors);
+      focusNoteLine(index);
+    }
+
     function applyList(kind) {
-      const ta = $("#note-body");
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const val = ta.value;
-      const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-      const nl = val.indexOf("\n", end);
-      const sliceEnd = nl === -1 ? val.length : nl;
-      const block = val.slice(lineStart, sliceEnd);
-      const next = block.split("\n").map((line, i) => {
-        const stripped = line.replace(/^\s*(?:[•\-*]|\d+\.)\s+/, "");
-        if (kind === "plain") return stripped;
-        if (kind === "dot") return "• " + stripped;
-        return (i + 1) + ". " + stripped;
-      }).join("\n");
-      ta.value = val.slice(0, lineStart) + next + val.slice(sliceEnd);
-      ta.focus();
+      if (kind !== "dot") return;
+      const editor = noteEditorEl();
+      editor.focus();
+      const index = getActiveLineIndex(editor);
+      const { lines, colors } = syncNoteEditorStructure();
+      const stripped = (lines[index] || "").replace(/^\s*(?:[•\-*]|\d+\.)\s+/, "");
+      lines[index] = "• " + stripped;
+      renderNoteLines(lines, colors);
+      focusNoteLine(index);
     }
 
     function resetNoteForm() {
@@ -1687,6 +1848,7 @@
       noteRemoveFiles = [];
       noteExistingFiles = [];
       $("#note-form").reset();
+      noteEditorEl().innerHTML = "";
       $("#note-bijlagen-list").innerHTML = "";
       $("#note-heading").textContent = "Nieuwe notitie";
       $("#note-delete").classList.add("hidden");
@@ -1713,7 +1875,7 @@
       noteId = rec.id;
       $("#note-title").value = rec.title || "";
       $("#note-kenmerk").value = rec.kenmerk || "";
-      $("#note-body").value = rec.beschrijving || "";
+      setNoteEditorContent(rec.beschrijving || "");
       noteExistingFiles = fileList(rec.bijlagen);
       renderFormFiles("note");
       $("#note-heading").textContent = "Notitie";
@@ -1816,6 +1978,11 @@
         applyList(listBtn.dataset.list);
         return;
       }
+      const lineColorBtn = event.target.closest("[data-line-color]");
+      if (lineColorBtn) {
+        applyLineColor(lineColorBtn.dataset.lineColor);
+        return;
+      }
       const check = event.target.closest("[data-todo-check]");
       if (check) {
         const id = check.dataset.todoCheck;
@@ -1908,9 +2075,10 @@
       const fields = {
         title: $("#note-title").value.trim(),
         kenmerk: $("#note-kenmerk").value.trim(),
-        beschrijving: $("#note-body").value
+        beschrijving: getNoteEditorHtml()
       };
       if (!fields.title) return toast("Vul een titel in");
+      if (notePlainPreview(fields.beschrijving).length > 20000) return toast("Omschrijving is te lang");
       try {
         await saveWithBijlagen("notes", noteId, fields, noteNewFiles, noteRemoveFiles);
         toast("Notitie opgeslagen");
