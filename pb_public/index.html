@@ -285,10 +285,10 @@
     }
 
     .fab {
-      width: 4.15rem;
-      height: 4.15rem;
+      width: 4.75rem;
+      height: 4.75rem;
       border-radius: 50%;
-      font-size: 2.35rem;
+      font-size: 2.65rem;
       font-weight: 400;
       line-height: 1;
       display: grid;
@@ -322,6 +322,20 @@
       -webkit-backdrop-filter: blur(18px) saturate(140%);
       border: 1px solid var(--line);
       box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+    }
+
+    .fab-menu .glass.note-opt {
+      border: 2px solid var(--note-accent);
+      box-shadow:
+        0 0 0 1px rgba(120, 190, 235, 0.28),
+        0 10px 28px rgba(0, 0, 0, 0.28);
+    }
+
+    .fab-menu .glass.todo-opt {
+      border: 2px solid var(--todo-accent);
+      box-shadow:
+        0 0 0 1px rgba(235, 150, 80, 0.28),
+        0 10px 28px rgba(0, 0, 0, 0.28);
     }
 
     button, .btn {
@@ -470,19 +484,52 @@
       border-color: rgba(201, 163, 106, 0.7);
     }
 
-    .tools {
+    .textarea-frame {
+      position: relative;
       display: flex;
-      gap: 0.45rem;
+      flex-direction: column;
+      min-height: 0;
     }
 
-    .tools button {
-      border-radius: 0.7rem;
-      padding: 0.45rem 0.7rem;
-      font-size: 0.82rem;
-      font-weight: 500;
+    .textarea-frame textarea {
+      padding-right: 3.1rem;
     }
 
-    .tools button:active { transform: scale(0.97); }
+    .list-dot-btn {
+      position: absolute;
+      top: 0.55rem;
+      right: 0.55rem;
+      z-index: 1;
+      width: 2.35rem;
+      height: 2.35rem;
+      padding: 0;
+      border-radius: 0.6rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--note-accent);
+    }
+
+    .list-dot-btn:active {
+      transform: scale(0.94);
+    }
+
+    #note-form .field-omschrijving {
+      flex: 1;
+      min-height: 0;
+    }
+
+    #note-form .field-omschrijving .textarea-frame {
+      flex: 1;
+    }
+
+    #note-form .field-omschrijving textarea {
+      flex: 1;
+      min-height: 14rem;
+      resize: vertical;
+    }
 
     .period {
       border: 0;
@@ -1015,16 +1062,12 @@
         <label class="field">Kenmerk
           <input id="note-kenmerk" name="kenmerk" type="text" maxlength="80" autocomplete="off" placeholder="bijv. werk, idee, privé">
         </label>
-        <div>
-          <div class="tools" style="margin-bottom:.45rem">
-            <button class="glass" type="button" data-list="dot">• punten</button>
-            <button class="glass" type="button" data-list="num">1. nummer</button>
-            <button class="glass" type="button" data-list="plain">tekst</button>
+        <label class="field field-omschrijving">Omschrijving
+          <div class="textarea-frame">
+            <button class="glass list-dot-btn" type="button" data-list="dot" aria-label="Puntenlijst">•</button>
+            <textarea id="note-body" name="beschrijving" maxlength="20000" placeholder="Schrijf hier…"></textarea>
           </div>
-          <label class="field">Omschrijving
-            <textarea id="note-body" name="beschrijving" maxlength="20000" placeholder="Schrijf hier… gebruik punten of nummering."></textarea>
-          </label>
-        </div>
+        </label>
         <label class="field file-picker">Bijlagen
           <input id="note-bijlagen" type="file" multiple accept="image/*,application/pdf,video/*,audio/*,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip">
         </label>
