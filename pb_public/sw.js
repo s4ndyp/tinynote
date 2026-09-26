@@ -1,4 +1,4 @@
-const CACHE = "tinynote-v1";
+const CACHE = "tinynote-v2";
 const PRECACHE = [
   "/",
   "/index.html",
@@ -6,8 +6,14 @@ const PRECACHE = [
   "/offline.html",
   "/icons/favicon-16.png",
   "/icons/favicon-32.png",
+  "/icons/icon-48.png",
+  "/icons/icon-72.png",
+  "/icons/icon-96.png",
+  "/icons/icon-144.png",
   "/icons/icon-180.png",
   "/icons/icon-192.png",
+  "/icons/icon-256.png",
+  "/icons/icon-384.png",
   "/icons/icon-512.png",
   "/icons/icon-maskable-192.png",
   "/icons/icon-maskable-512.png"
