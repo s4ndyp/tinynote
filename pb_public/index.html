@@ -846,6 +846,98 @@
       opacity: 0.55;
     }
 
+    .subtasks-field {
+      gap: 0.55rem;
+    }
+
+    .subtasks-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+    }
+
+    .subtasks-head .field-caption {
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(240, 230, 212, 0.55);
+    }
+
+    .subtask-add {
+      border-radius: 0.65rem;
+      padding: 0.38rem 0.7rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: 1px solid var(--todo-accent);
+      color: rgba(255, 210, 170, 0.95);
+    }
+
+    .subtasks-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .subtasks-empty {
+      color: rgba(240, 230, 212, 0.45);
+      font-size: 0.86rem;
+      line-height: 1.45;
+      text-transform: none;
+      letter-spacing: normal;
+      font-weight: 400;
+    }
+
+    .subtask-row {
+      display: grid;
+      grid-template-columns: 1.55rem 1fr 2rem;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .subtask-row .check {
+      width: 1.35rem;
+      height: 1.35rem;
+      margin: 0;
+    }
+
+    .subtask-title {
+      width: 100%;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--paper);
+      border-radius: 0.7rem;
+      padding: 0.55rem 0.7rem;
+      border: 1px solid var(--line);
+      background: rgba(255, 244, 224, 0.05);
+      outline: none;
+    }
+
+    .subtask-title:focus {
+      border-color: rgba(235, 150, 80, 0.65);
+    }
+
+    .subtask-row:has(.subtask-check.is-on) .subtask-title {
+      text-decoration: line-through;
+      color: rgba(240, 230, 212, 0.48);
+    }
+
+    .subtask-remove {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.55rem;
+      font-size: 1.25rem;
+      line-height: 1;
+      color: rgba(240, 230, 212, 0.55);
+    }
+
+    .subtask-remove:active {
+      transform: scale(0.94);
+    }
+
     #toast {
       position: fixed;
       left: 50%;
@@ -1155,6 +1247,13 @@
           <label class="glass"><input type="radio" name="periode" value="binnenkort"> Binnenkort</label>
           <label class="glass"><input type="radio" name="periode" value="later"> Later</label>
         </fieldset>
+        <div class="field subtasks-field">
+          <div class="subtasks-head">
+            <span class="field-caption">Subtaken</span>
+            <button class="glass subtask-add" type="button" id="todo-subtask-add">+ Subtaak</button>
+          </div>
+          <ul id="todo-subtasks-list" class="subtasks-list"></ul>
+        </div>
         <label class="field file-picker">Bijlagen
           <input id="todo-bijlagen" type="file" multiple accept="image/*,application/pdf,video/*,audio/*,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip">
         </label>
@@ -1252,6 +1351,7 @@
     let todoNewFiles = [];
     let todoRemoveFiles = [];
     let todoExistingFiles = [];
+    let todoSubtasks = [];
     let filesModalContext = null;
     let fabOpen = false;
     let noteEditorSavedCaret = { offset: 0, lineIndex: 0 };
@@ -1299,6 +1399,52 @@
       if (!value) return [];
       if (Array.isArray(value)) return value.filter(Boolean);
       return [value];
+    }
+
+    function newSubtaskId() {
+      return "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    function normalizeSubtasks(value) {
+      if (!value || !Array.isArray(value)) return [];
+      return value.map((entry) => ({
+        id: String(entry?.id || newSubtaskId()),
+        title: String(entry?.title || "").slice(0, 200),
+        done: !!entry?.done
+      }));
+    }
+
+    function serializedSubtasks() {
+      return todoSubtasks
+        .map((entry) => ({
+          id: entry.id,
+          title: entry.title.trim(),
+          done: !!entry.done
+        }))
+        .filter((entry) => entry.title);
+    }
+
+    function subtaskMeta(item) {
+      const list = normalizeSubtasks(item.subtaken);
+      if (!list.length) return "";
+      const done = list.filter((entry) => entry.done).length;
+      return ` · ${done}/${list.length} sub`;
+    }
+
+    function renderTodoSubtasks() {
+      const list = $("#todo-subtasks-list");
+      if (!list) return;
+      if (!todoSubtasks.length) {
+        list.innerHTML = '<li class="subtasks-empty">Nog geen subtaken. Voeg er een toe.</li>';
+        return;
+      }
+      list.innerHTML = todoSubtasks.map((entry, index) => `
+        <li class="subtask-row">
+          <button type="button" class="check subtask-check${entry.done ? " is-on" : ""}" data-subtask-index="${index}" aria-label="Subtaak afvinken"></button>
+          <input type="text" class="subtask-title" data-subtask-index="${index}" maxlength="200" value="${esc(entry.title)}" placeholder="Subtaak…" enterkeyhint="next">
+          <button type="button" class="subtask-remove" data-subtask-remove="${index}" aria-label="Subtaak verwijderen">×</button>
+        </li>
+      `).join("");
     }
 
     function displayName(filename) {
@@ -1609,7 +1755,7 @@
           <button class="check${item.done ? " is-on" : ""}" type="button" data-todo-check="${esc(item.id)}" data-done="${item.done ? "1" : "0"}" aria-label="${item.done ? "Terug naar to-do" : "Afvinken"}"></button>
           <button class="todo-main" type="button" data-open-todo="${esc(item.id)}">
             <span class="row-title">${esc(item.title)}</span>
-            <span class="row-meta">${esc(PERIODS[item.periode] || item.periode)}${item.kenmerk ? " · " + esc(item.kenmerk) : ""}</span>
+            <span class="row-meta">${esc(PERIODS[item.periode] || item.periode)}${item.kenmerk ? " · " + esc(item.kenmerk) : ""}${esc(subtaskMeta(item))}</span>
           </button>
           <span class="row-age" data-created="${esc(item.created)}">${esc(fmtElapsed(item.created))}</span>
         </div>
@@ -1669,7 +1815,7 @@
           <button class="check${item.done ? " is-on" : ""}" type="button" data-todo-check="${esc(item.id)}" data-done="${item.done ? "1" : "0"}" aria-label="Afvinken"></button>
           <button class="todo-main" type="button" data-open-todo="${esc(item.id)}">
             <span class="row-title">${esc(item.title)}</span>
-            <span class="row-meta">${esc(PERIODS[item.periode] || item.periode)}${item.kenmerk ? " · " + esc(item.kenmerk) : ""}</span>
+            <span class="row-meta">${esc(PERIODS[item.periode] || item.periode)}${item.kenmerk ? " · " + esc(item.kenmerk) : ""}${esc(subtaskMeta(item))}</span>
           </button>
           ${attachBtn("todos", item)}
           <span class="row-age" data-created="${esc(item.created)}" aria-label="Aangemaakt ${esc(fmtElapsed(item.created))} geleden">${esc(fmtElapsed(item.created))}</span>
@@ -1929,6 +2075,8 @@
       todoExistingFiles = [];
       $("#todo-form").reset();
       $("#todo-bijlagen-list").innerHTML = "";
+      todoSubtasks = [];
+      renderTodoSubtasks();
       $("#todo-heading").textContent = "Nieuwe to-do";
       $("#todo-delete").classList.add("hidden");
       $("input[name=periode][value=zsm]").checked = true;
@@ -1959,7 +2107,9 @@
       const radio = $('input[name=periode][value="' + rec.periode + '"]');
       if (radio) radio.checked = true;
       todoExistingFiles = fileList(rec.bijlagen);
+      todoSubtasks = normalizeSubtasks(rec.subtaken);
       renderFormFiles("todo");
+      renderTodoSubtasks();
       $("#todo-heading").textContent = "To-do";
       $("#todo-delete").classList.remove("hidden");
     }
@@ -2048,6 +2198,24 @@
       const lineColorBtn = event.target.closest("[data-line-color]");
       if (lineColorBtn) {
         applyLineColor(lineColorBtn.dataset.lineColor);
+        return;
+      }
+      const subtaskCheck = event.target.closest("[data-subtask-index].subtask-check");
+      if (subtaskCheck) {
+        const index = Number(subtaskCheck.dataset.subtaskIndex);
+        if (todoSubtasks[index]) {
+          todoSubtasks[index].done = !todoSubtasks[index].done;
+          renderTodoSubtasks();
+        }
+        return;
+      }
+      const subtaskRemove = event.target.closest("[data-subtask-remove]");
+      if (subtaskRemove) {
+        const index = Number(subtaskRemove.dataset.subtaskRemove);
+        if (Number.isFinite(index)) {
+          todoSubtasks.splice(index, 1);
+          renderTodoSubtasks();
+        }
         return;
       }
       const check = event.target.closest("[data-todo-check]");
@@ -2160,7 +2328,8 @@
       const fields = {
         title: $("#todo-title").value.trim(),
         kenmerk: $("#todo-kenmerk").value.trim(),
-        periode: ($("input[name=periode]:checked") || {}).value || "zsm"
+        periode: ($("input[name=periode]:checked") || {}).value || "zsm",
+        subtaken: serializedSubtasks()
       };
       if (!fields.title) return toast("Vul een titel in");
       try {
@@ -2231,6 +2400,23 @@
     $("#home-todos-mode").addEventListener("click", () => {
       homeTodosShowDone = !homeTodosShowDone;
       renderHomeTodosList();
+    });
+
+    $("#todo-subtask-add").addEventListener("click", () => {
+      todoSubtasks.push({ id: newSubtaskId(), title: "", done: false });
+      renderTodoSubtasks();
+      const inputs = $$(".subtask-title", $("#todo-subtasks-list"));
+      const last = inputs[inputs.length - 1];
+      if (last) last.focus();
+    });
+
+    $("#todo-subtasks-list").addEventListener("input", (event) => {
+      const input = event.target.closest(".subtask-title");
+      if (!input) return;
+      const index = Number(input.dataset.subtaskIndex);
+      if (Number.isFinite(index) && todoSubtasks[index]) {
+        todoSubtasks[index].title = input.value;
+      }
     });
 
     $("#fab").addEventListener("click", (event) => {
